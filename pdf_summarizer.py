@@ -1,7 +1,7 @@
-#pip install PyMuPDF
-
-import streamlit as st
+import os
 import fitz  # PyMuPDF
+import streamlit as st
+from transformers import pipeline
 
 def extract_text_from_pdf(pdf_path):
     document = fitz.open(pdf_path)
@@ -11,26 +11,18 @@ def extract_text_from_pdf(pdf_path):
         text += page.get_text()
     return text
 
-#pip install transformers
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
-from transformers import pipeline
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-
-"""### Load summarisation pipeline"""
-
-# Load the model
-model = AutoModelForSeq2SeqLM.from_pretrained("facebook/bart-large-cnn")
-# Load the tokenizer
-tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
-
-# Create the summarization pipeline
-summariser = pipeline("summarization", model=model, tokenizer=tokenizer)
-
-def summarize_text(text):
-    summary = summariser(text, do_sample=False)
+def summarize_text(text, max_length=None, min_length=None):
+    summary_args = {"text": text, "do_sample": False}
+    if max_length is not None:
+        summary_args["max_length"] = max_length
+    if min_length is not None:
+        summary_args["min_length"] = min_length
+    summary = summarizer(**summary_args)
     return summary[0]['summary_text']
 
-st.title("Document Summariser")
+st.title("PDF Text Summarizer")
 
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 if uploaded_file is not None:
@@ -40,3 +32,8 @@ if uploaded_file is not None:
     summary = summarize_text(text, max_length=max_length, min_length=min_length)
     st.write("Summary:")
     st.write(summary)
+
+# Get the port number from the environment variable
+port = int(os.environ.get('PORT', 8501))
+st._is_running_with_streamlit = False
+st.run(port=port)

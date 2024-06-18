@@ -1,1 +1,1 @@
-web: streamlit run your_script_name.py
+web: streamlit run pdf_summarizer.py

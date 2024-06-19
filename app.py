@@ -1,38 +1,80 @@
-import fitz  # PyMuPDF for PDF handling
+import streamlit as st
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.document_loaders import PyPDFLoader, DirectoryLoader
+from langchain.chains.summarize import load_summarize_chain
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 from transformers import pipeline
-from docx import Document  # python-docx for Word document handling
+import torch
+import base64
 
-# Function to extract text from PDF file
-def extract_text_from_pdf(file_like_object):
-    document = fitz.open("pdf", file_like_object.read())
-    text = ""
-    for page_num in range(len(document)):
-        page = document.load_page(page_num)
-        text += page.get_text()
-    return text
+#load model and tokenizer
+checkpoint = "LaMini-Flan-T5-248M"
+tokenizer = T5Tokenizer.from_pretrained(checkpoint)
+base_model = T5ForConditionalGeneration.from_pretrained(checkpoint, device_map = 'auto', torch_dtype = torch.float32)
 
-# Function to extract text from Word document
-def extract_text_from_docx(file_like_object):
-    doc = Document(file_like_object)
-    text = ""
-    for paragraph in doc.paragraphs:
-        text += paragraph.text + "\n"
-    return text
+#file loader and preprocessor
+def file_preprocessing(file):
+    loader = PyPDFLoader(file)
+    pages = loader.load_and_split()
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size = 200, chunk_overlap = 200)
+    texts = text_splitter.split_documents(pages)
+    final_texts = " "
+    for text in texts:
+        print(text)
+        final_texts = final_texts + text.page_content
+    return final_texts
 
-# Initialize the summarizer pipeline
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+# model pipeling
+def llm_pipeline(filepath):
+    pipe_sum = pipeline(
+        "summarization", 
+        model = base_model, 
+        tokenizer = tokenizer,
+        max_length = 512,
+        min_length = 50
+        )
+    input_text = file_preprocessing(filepath)
+    result = pipe_sum(input_text)
+    result = result[0]['summary_text']
+    return result
 
-# Function to summarize text
-def summarize_text(text, max_length=None, min_length=None):
-    if not text.strip():  # Check if text is empty or contains only whitespace
-        return ""
+@st.cache_data
+# function to display pdf
+def displayPDF(file):
+    #opeining file from path
+    with open(file, "rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+
+    # embedding pdf in html
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
     
-    summary_args = {"inputs": text, "do_sample": False}
-    if max_length is not None:
-        summary_args["max_length"] = max_length
-    if min_length is not None:
-        summary_args["min_length"] = min_length
-    
-    summary = summarizer(**summary_args)
-    return summary[0]['summary_text']
+    #displaying file
+    st.markdown(pdf_display, unsafe_allow_html=True)
 
+
+# streamlit code
+st.set_page_config(layout="wide", page_title="Document Summarizer")
+
+def main():
+    
+    st.title("Document Summarizer")
+
+    upload_file = st.file_uploader("Choose a file", type=["pdf"])
+
+    if upload_file is not None:
+        if st.button("Summarize"):
+            col1, col2 = st.columns(2)
+            filepath = "data/" + upload_file.name
+            with open(filepath, "wb") as temp_file:
+                temp_file.write(upload_file.read())
+            with col1:
+                st.info("upload file")
+                pdf_viewer = displayPDF(filepath)
+            with col2:
+                st.info("summarisation is below")
+
+            summary = llm_pipeline(filepath)
+            st.success("Summary generated successfully")
+
+if __name__ == "__main__":
+    main()

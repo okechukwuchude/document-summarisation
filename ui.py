@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from app import extract_text_from_pdf, extract_text_from_docx, summarize_text
+from pdf_app import extract_text_from_pdf, extract_text_from_docx, summarize_text
 
 st.title("Document Summarizer")
 

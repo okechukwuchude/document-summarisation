@@ -1,6 +1,7 @@
 import streamlit as st
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.document_loaders import PyPDFLoader, DirectoryLoader
+from langchain_community.document_loaders import DirectoryLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.chains.summarize import load_summarize_chain
 from transformers import T5Tokenizer, T5ForConditionalGeneration, AutoModelForSeq2SeqLM, AutoTokenizer
 from transformers import pipeline
@@ -8,13 +9,18 @@ import torch
 import base64
 
 #load model and tokenizer from machine
-# checkpoint = "LaMini-Flan-T5-248M"
-# tokenizer = T5Tokenizer.from_pretrained(checkpoint)
-# base_model = T5ForConditionalGeneration.from_pretrained(checkpoint, device_map = 'auto', torch_dtype = torch.float32)
+checkpoint = "LaMini-Flan-T5-248M"
+tokenizer = T5Tokenizer.from_pretrained(checkpoint)
+base_model = T5ForConditionalGeneration.from_pretrained(checkpoint, device_map = 'auto', torch_dtype = torch.float32)
 
-#load model and tokenizer from huggingface
-tokenizer = AutoTokenizer.from_pretrained("MBZUAI/LaMini-Flan-T5-248M")
-model = AutoModelForSeq2SeqLM.from_pretrained("MBZUAI/LaMini-Flan-T5-248M")
+# #load model and tokenizer from huggingface
+# tokenizer = AutoTokenizer.from_pretrained("MBZUAI/LaMini-Flan-T5-248M")
+# model = AutoModelForSeq2SeqLM.from_pretrained("MBZUAI/LaMini-Flan-T5-248M")
+
+# Check if CUDA (GPU) is available and set the device accordingly
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# base_model.to(device)
+#model.to(device)
 
 #file loader and preprocessor
 def file_preprocessing(file):
@@ -29,24 +35,10 @@ def file_preprocessing(file):
     return final_texts
 
 # model pipeling from machine
-# def llm_pipeline(filepath):
-#     pipe_sum = pipeline(
-#         "summarization", 
-#         model = base_model, 
-#         tokenizer = tokenizer,
-#         max_length = 512,
-#         min_length = 50
-#         )
-#     input_text = file_preprocessing(filepath)
-#     result = pipe_sum(input_text)
-#     result = result[0]['summary_text']
-#     return result
-
-# model pipeling from huggingface
 def llm_pipeline(filepath):
     pipe_sum = pipeline(
         "summarization", 
-        model = model, 
+        model = base_model, 
         tokenizer = tokenizer,
         max_length = 512,
         min_length = 50
@@ -55,6 +47,20 @@ def llm_pipeline(filepath):
     result = pipe_sum(input_text)
     result = result[0]['summary_text']
     return result
+
+# model pipeling from huggingface
+# def llm_pipeline(filepath):
+#     pipe_sum = pipeline(
+#         "summarization", 
+#         model = model, 
+#         tokenizer = tokenizer,
+#         max_length = 512,
+#         min_length = 50
+#         )
+#     input_text = file_preprocessing(filepath)
+#     result = pipe_sum(input_text)
+#     result = result[0]['summary_text']
+#     return result
 
 @st.cache_data
 # function to display pdf

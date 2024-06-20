@@ -1,7 +1,8 @@
 import streamlit as st
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import DirectoryLoader
-from langchain_community.document_loaders import PyPDFLoader
+from langchain.document_loaders import DirectoryLoader, PyPDFLoader
+# from langchain_community.document_loaders import DirectoryLoader
+# from langchain_community.document_loaders import PyPDFLoader
 from langchain.chains.summarize import load_summarize_chain
 from transformers import T5Tokenizer, T5ForConditionalGeneration, AutoModelForSeq2SeqLM, AutoTokenizer
 from transformers import pipeline
@@ -96,9 +97,11 @@ def main():
                 pdf_viewer = displayPDF(filepath)
             with col2:
                 st.info("summarisation is below")
+                summary = llm_pipeline(filepath)
+                st.success("Summary generated successfully")
+                st.write(summary)
 
-            summary = llm_pipeline(filepath)
-            st.success("Summary generated successfully")
+            
 
 if __name__ == "__main__":
     main()
